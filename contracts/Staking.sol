@@ -2,68 +2,101 @@
 
 pragma solidity ^0.8.8;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "contracts/IERC20.sol";
+
+error ZERO_AMOUNT();
+error INSUFFICIENT_TOKEN();
+error INSUFFICIENT_STAKED_TOKEN();
+error NO_REWARD();
 
 contract Staking {
-    using SafeMath for uint256;
-
-    IERC20 public token;
-    uint256 public rewardRate;
+    IERC20 token;
 
     // Struct to store user's staking data
     struct StakerData {
-        uint256 totalStaked;
-        uint256 lastStakedTimestamp;
-        uint256 reward;
+        uint totalStaked;
+        uint lastStakedTimestamp;
+        uint reward;
     }
 
-    mapping(address => StakerData) public stakers;
+    mapping(address => StakerData) stakers;
 
-    constructor(IERC20 _token, uint256 _rewardRate) {
+    constructor(IERC20 _token) {
         token = _token;
-        rewardRate = _rewardRate;
     }
 
-    function calculateReward(address user) public view returns (uint256) {
+    function getTokenAddress() external view returns (address) {
+        return address(token);
+    }
+
+    function calculateReward(address user) public view returns (uint) {
         StakerData storage staker = stakers[user];
-        uint256 stakingDuration = block.timestamp.sub(
-            staker.lastStakedTimestamp
-        );
-        return staker.totalStaked.mul(rewardRate).mul(stakingDuration).div(100);
+
+        uint stakingDuration = block.timestamp - staker.lastStakedTimestamp;
+
+        uint calculatedReward = ((staker.totalStaked * 10) / 100) *
+            ((stakingDuration / 60));
+
+        return calculatedReward;
     }
 
-    function stake(uint256 amount) public {
-        require(amount > 0, "Amount must be greater than 0");
+    function stake(uint amount) external {
+        if (amount < 1) {
+            revert ZERO_AMOUNT();
+        }
+
+        if (token.balanceOf(msg.sender) < amount) {
+            revert INSUFFICIENT_TOKEN();
+        }
+
         token.transferFrom(msg.sender, address(this), amount);
 
         // Update staker's data
         StakerData storage staker = stakers[msg.sender];
-        staker.reward = staker.reward.add(calculateReward(msg.sender));
-        staker.totalStaked = staker.totalStaked.add(amount);
+
+        staker.reward = staker.reward + calculateReward(msg.sender);
+
+        staker.totalStaked = staker.totalStaked + amount;
+
         staker.lastStakedTimestamp = block.timestamp;
     }
 
-    function unstake(uint256 amount) public {
+    function unstake(uint amount) external {
         StakerData storage staker = stakers[msg.sender];
-        require(staker.totalStaked >= amount, "Not enough staked tokens");
+
+        if (amount > staker.totalStaked) {
+            revert INSUFFICIENT_STAKED_TOKEN();
+        }
 
         // Update staker's data
-        staker.reward = staker.reward.add(calculateReward(msg.sender));
-        staker.totalStaked = staker.totalStaked.sub(amount);
+        staker.reward = staker.reward + (calculateReward(msg.sender));
+
+        staker.totalStaked = staker.totalStaked - (amount);
+
         staker.lastStakedTimestamp = block.timestamp;
 
         token.transfer(msg.sender, amount);
     }
 
-    function claimReward() public {
+    function claimReward() external {
         StakerData storage staker = stakers[msg.sender];
-        uint256 reward = staker.reward.add(calculateReward(msg.sender));
-        require(reward > 0, "No reward to claim");
+
+        uint reward = staker.reward + (calculateReward(msg.sender));
+
+        if (reward < 1) {
+            revert NO_REWARD();
+        }
 
         staker.reward = 0;
+
         staker.lastStakedTimestamp = block.timestamp;
 
         token.transfer(msg.sender, reward);
+    }
+
+    function getStakeInfo(
+        address _user
+    ) external view returns (StakerData memory) {
+        return stakers[_user];
     }
 }
