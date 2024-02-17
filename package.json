@@ -1,4 +1,8 @@
 {
+  "name": "staking_contract",
+  "author": {
+    "name": "Zarah"
+  },
   "devDependencies": {
     "@nomicfoundation/hardhat-chai-matchers": "^2.0.0",
     "@nomicfoundation/hardhat-ethers": "^3.0.0",
