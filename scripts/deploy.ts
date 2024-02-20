@@ -7,7 +7,6 @@ async function main() {
 
   const staking = await ethers.deployContract("Staking", [token.target]);
   staking.waitForDeployment()
-
   console.log(
     `Token contract deployed at ${token.target}`
   );

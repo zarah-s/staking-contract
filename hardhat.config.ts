@@ -7,10 +7,10 @@ const PRIVATE_KEY: string = process.env.PRIVATE_KEY!;
 const config: HardhatUserConfig = {
   solidity: "0.8.24",
   networks: {
-    // sepolia: {
-    //   url: RPC_URL,
-    //   accounts: [PRIVATE_KEY]
-    // }
+    sepolia: {
+      url: RPC_URL,
+      accounts: [PRIVATE_KEY]
+    }
   }
 };
 
